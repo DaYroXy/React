@@ -1,33 +1,51 @@
-import { createContext, useState } from "react";
-import { v4 as uuidv4 } from 'uuid';
-
+import { createContext, useState, useEffect } from "react";
 const FeedBackContext = createContext();
 
 export const FeedBackProvider = ({children}) => {
 
-    const [feedBack, setFeedBack] = useState([{
-            id: 1,
-            text: 'This is a test feedback',
-            rating: 10
-        }]
-    );
-
+    const [isLoading, setIsLoading] = useState(true);
+    const [feedBack, setFeedBack] = useState([]);
     const [feedBackEdit, setFeedBackEdit] = useState({
         item: {},
         edit: false
     })
+
+    const API_URL = "http://localhost:5200/feedBack"
+
+    useEffect(() => {
+        fetchFeedback()
+    }, [])
+
+    const fetchFeedback = async () => {
+        const response = await fetch(`${API_URL}?_sort=id&_order=desc`);
+        const data = await response.json();
+
+        setFeedBack(data)
+        setIsLoading(false)
+    }
     
     // Add feedback
-    const submitFeedBack = (newfeedBack) => {
-        newfeedBack.id = uuidv4();
-        setFeedBack([newfeedBack, ...feedBack])
+    const submitFeedBack = async (newfeedBack) => {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(newfeedBack)
+        })
+
+        const data = await response.json()
+        setFeedBack([data, ...feedBack])
     }
 
     // Delete feedback
-    const deleteFeedBack = (id) => {
-        setFeedBack(feedBack.filter((item) => {
-            return item.id !== id
-        }))
+    const deleteFeedBack = async (id) => {
+        
+        await fetch(`${API_URL}/${id}`, {
+            method: "DELETE",
+        })
+
+        setFeedBack(feedBack.filter((item) => { return item.id !== id }))
     }
 
     // Set edit feedback item
@@ -39,10 +57,20 @@ export const FeedBackProvider = ({children}) => {
     }
 
     // Update feedback
-    const updateFeedBack = (id, updItem) => {
+    const updateFeedBack = async (id, updItem) => {
+
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(updItem)
+        })
+
+        const data = await response.json()
 
         setFeedBack(feedBack.map((item) => (
-            item.id === id ? { ...item, ...updItem } : item
+            item.id === id ? { ...item, ...data } : item
         )))
         
     }
@@ -53,7 +81,8 @@ export const FeedBackProvider = ({children}) => {
         deleteFeedBack,
         editFeedBack,
         feedBackEdit,
-        updateFeedBack
+        updateFeedBack,
+        isLoading
     }}>
         {children}
     </FeedBackContext.Provider>
